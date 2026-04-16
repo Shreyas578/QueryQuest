@@ -1,0 +1,67 @@
+require('dotenv').config();
+const express = require('express');
+const http = require('http');
+const cors = require('cors');
+const { Server } = require('socket.io');
+const db = require('./src/config/db');
+const { initSocketHandler } = require('./src/socket/socket.handler');
+
+// Route imports
+const authRoutes = require('./src/routes/auth.routes');
+const lobbyRoutes = require('./src/routes/lobby.routes');
+const gameRoutes = require('./src/routes/game.routes');
+
+const app = express();
+const httpServer = http.createServer(app);
+
+// ── Socket.IO ─────────────────────────────────────────────────────────────────
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.CLIENT_URL || 'http://localhost:4200',
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
+
+// ── Middleware ─────────────────────────────────────────────────────────────────
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:4200',
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ── REST Routes ────────────────────────────────────────────────────────────────
+app.use('/api/auth', authRoutes);
+app.use('/api/lobby', lobbyRoutes);
+app.use('/api/game', gameRoutes);
+
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
+
+// ── Global error handler ───────────────────────────────────────────────────────
+app.use((err, _req, res, _next) => {
+  console.error('[Error]', err.message);
+  res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+});
+
+// ── DB + Socket bootstrap ──────────────────────────────────────────────────────
+(async () => {
+  try {
+    const conn = await db.getConnection();
+    console.log('✅ MySQL connected');
+    conn.release();
+
+    initSocketHandler(io);
+    console.log('✅ Socket.IO initialised');
+
+    const PORT = process.env.PORT || 3000;
+    httpServer.listen(PORT, () => {
+      console.log(`🚀 QueryQuest backend running on http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error('❌ Failed to start server:', err.message);
+    process.exit(1);
+  }
+})();

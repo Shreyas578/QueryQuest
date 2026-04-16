@@ -1,0 +1,99 @@
+const mysql = require('mysql2/promise');
+
+/**
+ * SandboxService — executes player SQL in an isolated, read-only MySQL connection.
+ *
+ * Each answer gets its own ephemeral connection scoped to the question's
+ * temporary schema so players cannot affect each other or the main DB.
+ */
+const SandboxService = {
+  /**
+   * Run player SQL against the question's schema and compare result to expected.
+   *
+   * @param {string} playerSql  — the SQL submitted by the player
+   * @param {Object} question   — { setup_sql, expected_rows, answer_sql }
+   * @returns {{ correct: boolean, result: any[], error: string|null }}
+   */
+  async execute(playerSql, question) {
+    const conn = await mysql.createConnection({
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT) || 3306,
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      multipleStatements: false,
+    });
+
+    const dbName = `qq_sandbox_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+    try {
+      // 1. Create isolated schema
+      await conn.query(`CREATE DATABASE \`${dbName}\``);
+      await conn.query(`USE \`${dbName}\``);
+
+      // 2. Run question setup DDL + seed data
+      if (question.setup_sql) {
+        for (const stmt of _splitStatements(question.setup_sql)) {
+          await conn.query(stmt);
+        }
+      }
+
+      // 3. Execute player query (single statement only — prevent injections)
+      const safe = _sanitize(playerSql);
+      if (!safe) {
+        return { correct: false, result: [], error: 'Only SELECT statements are allowed.' };
+      }
+
+      const [rows] = await conn.query({ sql: safe, timeout: 3000 });
+      const playerResult = Array.isArray(rows) ? rows : [];
+
+      // 4. Run expected answer to get canonical result
+      const [expectedRows] = await conn.query({ sql: question.answer_sql, timeout: 3000 });
+
+      const correct = _compareResults(playerResult, expectedRows);
+      return { correct, result: playerResult.slice(0, 50), error: null };
+    } catch (err) {
+      const message = err.sqlMessage || err.message || 'Query error';
+      return { correct: false, result: [], error: message };
+    } finally {
+      try {
+        await conn.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
+      } catch (_) {}
+      await conn.end();
+    }
+  },
+};
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function _sanitize(sql) {
+  const trimmed = sql.trim().replace(/;+$/, '');
+  // Only allow SELECT statements
+  if (!/^SELECT\b/i.test(trimmed)) return null;
+  // Disallow dangerous keywords
+  if (/\b(DROP|DELETE|INSERT|UPDATE|ALTER|CREATE|GRANT|REVOKE|TRUNCATE|EXEC|CALL)\b/i.test(trimmed))
+    return null;
+  return trimmed;
+}
+
+function _splitStatements(sql) {
+  return sql.split(';').map(s => s.trim()).filter(Boolean);
+}
+
+function _compareResults(a, b) {
+  if (a.length !== b.length) return false;
+  const norm = (arr) =>
+    arr.map(row =>
+      Object.fromEntries(
+        Object.entries(row).map(([k, v]) => [k.toLowerCase(), String(v ?? '').toLowerCase()])
+      )
+    );
+  const na = norm(a);
+  const nb = norm(b);
+  return JSON.stringify(na.sort(_rowSort)) === JSON.stringify(nb.sort(_rowSort));
+}
+
+function _rowSort(a, b) {
+  return JSON.stringify(a) < JSON.stringify(b) ? -1 : 1;
+}
+
+module.exports = SandboxService;

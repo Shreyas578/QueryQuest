@@ -1,0 +1,451 @@
+<div class="app-container">
+  <!-- ── Header ───────────────────────────────────────────────────────────── -->
+  <header class="glass" style="margin: 1rem; padding: 1rem; display: flex; justify-content: space-between; align-items: center; z-index: 100;">
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <div style="width: 32px; height: 32px; background: var(--primary); border-radius: 6px; display: grid; place-items: center; font-weight: 800; color: #000;">Q</div>
+      <h2 style="letter-spacing: 2px; font-weight: 700;">QUERY<span class="text-cyan">QUEST</span></h2>
+    </div>
+
+    @if (auth.isLoggedIn) {
+      <div style="display: flex; align-items: center; gap: 1.5rem;">
+        <div style="text-align: right;">
+          <div style="font-size: 0.85rem; font-weight: 600;">{{ auth.user?.username }}</div>
+          <div style="font-size: 0.7rem; color: var(--primary);">ELO: {{ auth.user?.elo_rating }}</div>
+        </div>
+        <button class="btn btn-outline" (click)="logout()" style="padding: 0.5rem 1rem; height: auto;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    }
+  </header>
+
+  <main class="main-content">
+    
+    <!-- ── AUTH PHASE ────────────────────────────────────────────────────────── -->
+    @if (!auth.isLoggedIn) {
+      <div class="glass animate-fade" style="width: 100%; max-width: 400px; padding: 2.5rem;">
+        <h1 style="margin-bottom: 0.5rem; font-size: 1.75rem;">{{ authPhase() === 'login' ? 'Welcome Back' : 'Create Account' }}</h1>
+        <p style="color: var(--text-dim); margin-bottom: 2rem; font-size: 0.9rem;">Master the art of SQL in real-time battle.</p>
+
+        <form (ngSubmit)="onAuthSubmit()" style="display: flex; flex-direction: column; gap: 1.25rem;">
+          @if (authPhase() === 'register') {
+            <div>
+              <label style="display: block; font-size: 0.75rem; margin-bottom: 0.5rem; color: var(--text-dim);">Username</label>
+              <input type="text" name="username" [(ngModel)]="authForm.username" placeholder="sql_master" 
+                     style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); padding: 0.8rem; border-radius: 8px; color: #fff;">
+            </div>
+          }
+          <div>
+            <label style="display: block; font-size: 0.75rem; margin-bottom: 0.5rem; color: var(--text-dim);">Email</label>
+            <input type="email" name="email" [(ngModel)]="authForm.email" placeholder="coder@queryquest.io"
+                   style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); padding: 0.8rem; border-radius: 8px; color: #fff;">
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.75rem; margin-bottom: 0.5rem; color: var(--text-dim);">Password</label>
+            <input type="password" name="password" [(ngModel)]="authForm.password" placeholder="••••••••"
+                   style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); padding: 0.8rem; border-radius: 8px; color: #fff;">
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem;">
+            {{ authPhase() === 'login' ? 'Login to Portal' : 'Initialize Account' }}
+          </button>
+        </form>
+
+        <div style="margin-top: 2rem; text-align: center; font-size: 0.85rem;">
+          <span style="color: var(--text-dim);">
+            {{ authPhase() === 'login' ? "Don't have an access key?" : "Already a member?" }}
+          </span>
+          <button (click)="authPhase.set(authPhase() === 'login' ? 'register' : 'login')" 
+                  style="background: none; border: none; color: var(--primary); font-weight: 600; cursor: pointer; margin-left: 0.5rem;">
+            {{ authPhase() === 'login' ? 'Register' : 'Login' }}
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- ── LOBBY PHASE ───────────────────────────────────────────────────────── -->
+    @if (auth.isLoggedIn && gameState().phase === 'lobby') {
+      <div class="animate-fade" style="text-align: center;">
+        <h1 style="font-size: 3.5rem; font-weight: 800; margin-bottom: 1rem; letter-spacing: -2px;">ARE YOU READY?</h1>
+        <p style="color: var(--text-dim); max-width: 500px; margin: 0 auto 3rem;">Join thousands of Query Masters in real-time SQL duels. Rank up, learn complex queries, and dominate the leaderboard.</p>
+        
+        <div style="display: flex; gap: 1.5rem; justify-content: center;">
+          <button class="btn btn-primary" style="padding: 1.25rem 3rem;" (click)="joinMatchmaking()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 3l14 9-14 9V3z"/></svg>
+            QUICK PLAY
+          </button>
+          <button class="btn btn-outline" style="padding: 1.25rem 3rem;" (click)="showCreateModal.set(true)">
+            PRIVATE ROOM
+          </button>
+          <button class="btn btn-outline" style="padding: 1.25rem 2rem; border-color: var(--secondary);" (click)="showJoinModal.set(true)">
+            JOIN BY CODE
+          </button>
+        </div>
+
+        @if (availableRooms().length > 0) {
+          <div style="margin-top: 4rem; max-width: 800px; margin-left: auto; margin-right: auto;">
+            <div style="font-size: 0.75rem; color: var(--primary); letter-spacing: 4px; margin-bottom: 1.5rem; font-weight: 800;">JOIN LIVE BATTLES</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem;">
+              @for (room of availableRooms(); track room.code) {
+                <div class="glass animate-fade" style="padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; text-align: left; border-left: 3px solid var(--secondary);">
+                   <div>
+                     <div style="font-weight: 700; font-size: 0.95rem;">Host: {{ room.host_name }}</div>
+                     <div style="font-size: 0.75rem; color: var(--text-dim);">{{ room.player_count }}/{{ room.max_players }} Operatives • {{ room.difficulty | uppercase }}</div>
+                   </div>
+                   <button class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.75rem;" (click)="joinRoom(room.code)">JOIN</button>
+                </div>
+              }
+            </div>
+          </div>
+        }
+        
+        @if (showCreateModal()) {
+          <div class="animate-fade" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; display: grid; place-items: center; padding: 1rem;">
+            <div class="glass" style="width: 100%; max-width: 450px; padding: 2.5rem; position: relative;">
+               <button (click)="showCreateModal.set(false)" style="position: absolute; top: 1.5rem; right: 1.5rem; background: none; border: none; color: #fff; cursor: pointer; opacity: 0.5;">✕</button>
+               <h2 style="margin-bottom: 2rem;">PRIVATE SESSION SETUP</h2>
+               
+               <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                 <div>
+                   <label style="display: block; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.5rem;">COMPLEXITY LEVEL</label>
+                   <select [(ngModel)]="roomConfig.difficulty" style="width: 100%; background: #1a1a1e; border: 1px solid var(--glass-border); padding: 0.8rem; border-radius: 8px; color: #fff;">
+                     <option value="easy">EASY (Basics)</option>
+                     <option value="medium">MEDIUM (Joins/Aggr)</option>
+                     <option value="hard">HARD (Complex/Windows)</option>
+                     <option value="mixed">MIXED (All Ranges)</option>
+                   </select>
+                 </div>
+                 <div>
+                   <label style="display: block; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.5rem;">QUESTION COUNT (MAX 25)</label>
+                   <input type="number" [(ngModel)]="roomConfig.num_questions" min="1" max="25" style="width: 100%; background: #1a1a1e; border: 1px solid var(--glass-border); padding: 0.8rem; border-radius: 8px; color: #fff;">
+                 </div>
+                 <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem;" (click)="createRoom()">
+                   INITIALIZE ROOM
+                 </button>
+               </div>
+            </div>
+          </div>
+        }
+        
+        <div style="margin-top: 4rem; display: flex; gap: 4rem; justify-content: center;">
+          <div class="glass" style="padding: 1.5rem 2.5rem; text-align: left;">
+            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.5rem;">Active Players</div>
+            <div style="font-size: 1.5rem; font-weight: 700;" class="text-cyan">1,248</div>
+          </div>
+          <div class="glass" style="padding: 1.5rem 2.5rem; text-align: left;">
+            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.5rem;">Your Rank</div>
+            <div style="font-size: 1.5rem; font-weight: 700;" class="text-purple">Silver IV</div>
+          </div>
+        </div>
+        
+        @if (showJoinModal()) {
+          <div class="animate-fade" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; display: grid; place-items: center; padding: 1rem;">
+            <div class="glass" style="width: 100%; max-width: 400px; padding: 2.5rem; position: relative; border-top: 4px solid var(--secondary);">
+               <button (click)="showJoinModal.set(false)" style="position: absolute; top: 1.5rem; right: 1.5rem; background: none; border: none; color: #fff; cursor: pointer; opacity: 0.5;">✕</button>
+               <h2 style="margin-bottom: 0.5rem; letter-spacing: 2px;">SECURE ACCESS</h2>
+               <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 2rem;">Enter the 6-character room code to join the session.</p>
+               
+               <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                 <input type="text" [(ngModel)]="manualCode" placeholder="EF42A9" maxlength="6" 
+                        class="text-mono"
+                        style="width: 100%; background: #1a1a1e; border: 1px solid var(--glass-border); padding: 1.25rem; border-radius: 8px; color: var(--primary); font-size: 2.5rem; text-align: center; text-transform: uppercase; letter-spacing: 8px;">
+                 
+                 <button class="btn btn-primary" style="width: 100%; justify-content: center; background: var(--secondary); color: white !important;" 
+                         (click)="joinRoom(manualCode); showJoinModal.set(false)">
+                   CONNECT TO LOBBY
+                 </button>
+               </div>
+            </div>
+          </div>
+        }
+
+        <!-- Matchmaking Overlay -->
+        @if (isMatchmaking()) {
+          <div class="animate-fade" style="position: absolute; inset: 0; background: rgba(10, 10, 12, 0.9); z-index: 50; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 12px;">
+            <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 2rem; display: flex; align-items: center; gap: 1rem;">
+               <div style="width: 24px; height: 24px; border: 3px solid var(--primary); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+               SEARCHING FOR OPPONENTS...
+            </div>
+            <p style="color: var(--text-dim); margin-bottom: 2rem;">Finding masters of equal rank...</p>
+            <button class="btn btn-outline" (click)="socket.emit('leave_matchmaking')">CANCEL QUEUE</button>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ── ROOM LOBBY PHASE ──────────────────────────────────────────────────── -->
+    @if (auth.isLoggedIn && gameState().phase === 'room_lobby') {
+      <div class="animate-fade" style="text-align: center; width: 100%; max-width: 800px;">
+        <div style="font-size: 0.75rem; color: var(--primary); letter-spacing: 4px; margin-bottom: 1rem; font-weight: 800;">SESSION ID: <span class="text-cyan">{{ gameState().roomCode || '---' }}</span></div>
+        <h1 style="margin-bottom: 1rem;">WAITING FOR OPERATIVES</h1>
+        <p style="color: var(--text-dim); margin-bottom: 3rem;">At least 2 operatives required to commence battle.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem; margin-bottom: 4rem;">
+          @for (p of gameState().scores; track p.id) {
+            <div class="glass animate-fade" style="padding: 2rem 1rem; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; border-bottom: 4px solid;"
+                 [style.border-color]="p.is_ready ? '#00ff88' : 'var(--primary)'">
+              <div class="avatar-frame" [class.ready]="p.is_ready">
+                <div [style.background]="p.avatarColor" style="width: 100%; height: 100%; border-radius: 50%;"></div>
+              </div>
+              <div style="font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+                {{ p.username }}
+                @if (p.isHost) {
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="gold" style="filter: drop-shadow(0 0 5px gold);"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                }
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.5rem;">ELO: {{ p.elo_rating || 1000 }}</div>
+              
+              @if (p.is_ready) {
+                <span class="ready-badge">READY</span>
+              } @else {
+                <span class="not-ready-badge">WAITING</span>
+              }
+            </div>
+          }
+          @for (i of [1,2,3,4].slice(gameState().scores.length); track i) {
+            <div class="glass" style="padding: 2rem 1rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; opacity: 0.3; border-style: dashed;">
+              <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,0.1); display: grid; place-items: center; font-size: 1.5rem;">?</div>
+              <div style="font-weight: 700;">VACANT</div>
+            </div>
+          }
+        </div>
+
+        <div style="display: flex; gap: 1.5rem; justify-content: center; align-items: center; flex-wrap: wrap;">
+          <button class="btn" 
+                  [class.btn-primary]="!isReady()" 
+                  [class.btn-outline]="isReady()"
+                  style="padding: 1.25rem 3rem; min-width: 200px;"
+                  [style.border-color]="isReady() ? '#00ff88' : ''"
+                  [style.color]="isReady() ? '#00ff88' : ''"
+                  (click)="toggleReady()">
+            {{ isReady() ? 'CANCEL READY' : 'READY UP' }}
+          </button>
+
+          @if (isHost()) {
+            <button class="btn btn-primary" 
+                    style="padding: 1.25rem 4rem; position: relative;" 
+                    [disabled]="!allReady()"
+                    (click)="startGame()">
+              @if (!allReady()) {
+                <div style="font-size: 0.7rem; color: #ff0055; margin-bottom: 0.25rem; font-weight: 800; letter-spacing: 1px;">WAITING FOR ALL</div>
+              }
+              START BATTLE
+              @if (allReady()) {
+                <div class="scanner-overlay" style="border-radius: 8px;"></div>
+              }
+            </button>
+          }
+
+          <button class="btn btn-outline" style="padding: 1.25rem 2rem;" (click)="gameState.update(s => ({ ...s, phase: 'lobby' }))">
+            LEAVE
+          </button>
+        </div>
+
+        @if (isHost() && !allReady() && gameState().scores.length >= 2) {
+          <div class="animate-fade" style="margin-top: 1.5rem; color: #ff0055; font-size: 0.8rem; font-weight: 600; letter-spacing: 1px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right: 0.5rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>
+            ALL OPERATIVES MUST BE READY TO ENGAGE
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ── COUNTDOWN PHASE ───────────────────────────────────────────────────── -->
+    @if (gameState().phase === 'countdown') {
+      <div class="animate-fade" style="text-align: center;">
+        <div style="font-size: 1.5rem; color: var(--primary); margin-bottom: 1rem; font-weight: 700; letter-spacing: 4px;">INITIALIZING BATTLE</div>
+        <div style="font-size: 10rem; font-weight: 900; line-height: 1;" class="text-cyan">{{ gameState().countdown }}</div>
+      </div>
+    }
+
+    <!-- ── GAME PHASE ────────────────────────────────────────────────────────── -->
+    @if (gameState().phase === 'question' || gameState().phase === 'result') {
+      <div style="width: 100%; height: 100%; display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem;">
+        
+        <!-- Left: Engine Area -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          
+          <!-- Round Info -->
+          <div class="glass" style="padding: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 1rem; align-items: center;">
+              <span class="glass" style="padding: 0.25rem 0.75rem; font-size: 0.8rem; font-weight: 700;">
+                Q{{ gameState().question?.index! + 1 }} / {{ gameState().question?.total }}
+              </span>
+              <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-dim);">{{ gameState().question?.topic }}</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <div style="background: rgba(255,255,255,0.05); width: 200px; height: 8px; border-radius: 4px; overflow: hidden;">
+                <div [style.width.%]="(gameState().timeLeft / gameState().question?.timeLimit!) * 100" 
+                     style="height: 100%; background: var(--primary); transition: width 1s linear;"></div>
+              </div>
+              <span class="text-mono text-cyan" style="font-size: 1.25rem; font-weight: 700;">{{ gameState().timeLeft }}s</span>
+            </div>
+          </div>
+
+          <!-- Question Content -->
+          <div class="glass" style="flex: 1; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; overflow-y: auto;">
+            <div style="font-size: 0.85rem; color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+              SCENARIO
+            </div>
+            <p style="font-size: 1.15rem; line-height: 1.6; font-weight: 500;">{{ gameState().question?.scenario }}</p>
+            
+            <div style="background: rgba(0,0,0,0.3); border-left: 3px solid var(--secondary); padding: 1.25rem; border-radius: 4px;">
+              <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--secondary);">QUESTION:</div>
+              <div style="font-size: 1.1rem;">{{ gameState().question?.question }}</div>
+            </div>
+
+            @if (gameState().question?.type === 'sql') {
+              <div style="margin-top: 1rem;">
+                <div style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.5rem;">SCHEMA DEFINITION</div>
+                <code class="text-mono" style="background: #1a1a1e; padding: 1rem; border-radius: 6px; display: block; width: 100%; font-size: 0.9rem; color: #a5d6ff;">
+                  {{ gameState().question?.schema_display }}
+                </code>
+              </div>
+            }
+          </div>
+
+          <!-- Answer Input -->
+          <div class="glass" style="padding: 1.5rem; min-height: 250px; display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.75rem; color: var(--text-dim); font-weight: 700;">YOUR SOLUTION</span>
+              @if (gameState().answered) {
+                <span style="font-size: 0.75rem; color: var(--accent); font-weight: 700; text-transform: uppercase;">
+                  Submission Received 
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg>
+                </span>
+              }
+            </div>
+
+            @if (gameState().question?.type === 'mcq') {
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; flex: 1;">
+                @for (opt of gameState().question?.options; track opt) {
+                  <button class="btn btn-outline" 
+                          [disabled]="gameState().answered"
+                          [style.border-color]="gameState().answered && opt === gameState().answerResult?.correctAnswer ? 'var(--accent)' : ''"
+                          [style.background]="gameState().answered && opt === gameState().answerResult?.correctAnswer ? 'rgba(57, 255, 20, 0.1)' : ''"
+                          (click)="selectMCQ(opt)" 
+                          style="justify-content: flex-start; text-align: left; padding: 1rem; font-size: 1rem; text-transform: none;">
+                    <span style="color: var(--primary); font-family: var(--font-mono); font-weight: 800; margin-right: 0.75rem;">{{ $index + 1 }}</span>
+                    {{ opt }}
+                  </button>
+                }
+              </div>
+            } @else {
+              <textarea [(ngModel)]="sqlAnswer" 
+                        [disabled]="gameState().answered"
+                        placeholder="SELECT * FROM table WHERE condition..."
+                        class="text-mono"
+                        style="flex: 1; width: 100%; background: #1a1a1e; border: 1px solid var(--glass-border); border-radius: 8px; padding: 1.5rem; color: #fff; font-size: 1.1rem; resize: none; outline: none;"></textarea>
+              <div style="display: flex; justify-content: flex-end;">
+                <button class="btn btn-primary" (click)="submitAnswer(sqlAnswer)" [disabled]="gameState().answered || !sqlAnswer.trim()">
+                  SUBMIT QUERY
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Right: Scoreboard Sidebar -->
+        <aside class="glass" style="display: flex; flex-direction: column; padding: 1.5rem; overflow: hidden;">
+          <h3 style="font-size: 1.1rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-2.34c0-.28.11-.54.31-.73l1.85-1.85a4.34 4.34 0 0 0-6.13-6.13L10 7c.2.22.31.5.31.81V10c0 .55-.45 1-1 1H7.81c-.31 0-.59-.11-.81-.31L5.15 8.85a4.34 4.34 0 0 0 6.13 6.13l1.85 1.85c.2.19.31.45.31.73z"/></svg>
+            LEADERBOARD
+          </h3>
+
+          <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem;">
+            @for (p of gameState().scores; track p.id) {
+              <div class="glass" style="background: rgba(255,255,255,0.02); padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <div [style.background]="p.avatarColor" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.1);"></div>
+                  <div>
+                    <div style="font-size: 0.85rem; font-weight: 700;">{{ p.username }}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-dim);">#{{ $index + 1 }} Rank</div>
+                  </div>
+                </div>
+                <div class="text-mono text-cyan" style="font-weight: 800;">{{ p.score }}</div>
+              </div>
+            }
+          </div>
+        </aside>
+
+        <!-- Result Overlay -->
+        @if (gameState().phase === 'result' || (gameState().answered && gameState().answerResult)) {
+          <div class="glass animate-fade" style="position: absolute; bottom: 3rem; left: 2rem; right: calc(300px + 3.5rem); background: rgba(10, 10, 12, 0.98); padding: 2rem; border-top: 6px solid; box-shadow: 0 -10px 40px rgba(0,0,0,0.5); z-index: 1000; max-height: 400px; overflow-y: auto;"
+               [style.border-color]="gameState().answerResult?.correct ? '#39FF14' : '#FF0055'">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+              <h2 [style.color]="gameState().answerResult?.correct ? '#39FF14' : '#FF0055'" style="display: flex; align-items: center; gap: 0.75rem; margin: 0; font-size: 2rem; font-weight: 900;">
+                @if (gameState().answerResult?.correct) {
+                  DECODED SUCCESSFULLY! +{{ gameState().answerResult?.score }} PTS
+                } @else {
+                  ACCESS DENIED
+                }
+              </h2>
+              @if (gameState().phase === 'result') {
+                <span class="text-mono" style="font-size: 0.8rem; background: var(--glass-border); padding: 0.25rem 1rem; border-radius: 20px;">SYNCING NEXT WAVE...</span>
+              }
+            </div>
+
+            <p style="font-size: 1.1rem; line-height: 1.6; margin-bottom: 2rem; color: #fff; font-weight: 500;">
+              {{ gameState().answerResult?.explanation }}
+            </p>
+            
+            @if (!gameState().answerResult?.correct) {
+              <div style="background: rgba(255,0,85,0.08); border: 2px solid rgba(255,0,85,0.3); padding: 1.5rem; border-radius: 12px;">
+                 <div style="color: #FF0055; font-size: 0.8rem; font-weight: 800; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">
+                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                   AUTHORIZED SOLUTION
+                 </div>
+                 <div class="text-mono" style="font-size: 1.15rem; color: #39FF14; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 6px; border: 1px solid rgba(57, 255, 20, 0.1);">
+                   {{ gameState().answerResult?.correctAnswer }}
+                 </div>
+              </div>
+            } @else {
+               <div style="background: rgba(57,255,20,0.08); border: 2px solid rgba(57,255,20,0.3); padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; gap: 1rem; color: #39FF14;">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+                  <div style="font-weight: 700; font-size: 1.1rem;">Objective Completed. Score Multiplier Active.</div>
+               </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ── GAME OVER PHASE ───────────────────────────────────────────────────── -->
+    @if (gameState().phase === 'gameover') {
+      <div class="animate-fade" style="text-align: center; width: 100%; max-width: 600px;">
+        <h1 class="text-purple" style="font-size: 4rem; font-weight: 900; margin-bottom: 0.5rem;">GAME OVER</h1>
+        <p style="color: var(--text-dim); margin-bottom: 3rem;">The duel has concluded. Ranking calculations updated.</p>
+
+        <div style="display: flex; justify-content: center; align-items: flex-end; gap: 1rem; margin-bottom: 3rem; height: 300px;">
+          @for (res of gameState().gameOver?.results; track res.id) {
+            @if (res.rank <= 3) {
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+                 <div [style.background]="res.avatarColor" style="width: 60px; height: 60px; border-radius: 50%; border: 4px solid gold;"></div>
+                 <div style="font-weight: 700;">{{ res.username }}</div>
+                 <div class="glass" [style.height.px]="res.rank === 1 ? 180 : res.rank === 2 ? 140 : 100" 
+                      style="width: 100px; display: flex; flex-direction: column; justify-content: space-between; padding: 1rem; border-bottom: 0; border-radius: 12px 12px 0 0;">
+                    <div style="font-size: 2rem; font-weight: 900;" [class.text-cyan]="res.rank === 1">{{ res.rank }}</div>
+                    <div class="text-mono" style="font-size: 0.8rem;">{{ res.score }}</div>
+                 </div>
+              </div>
+            }
+          }
+        </div>
+
+        <button class="btn btn-primary" (click)="gameState.update(s => ({ ...s, phase: 'lobby' }))" style="padding: 1rem 3rem;">
+          RETURN TO PORTAL
+        </button>
+      </div>
+    }
+
+  </main>
+  
+  <!-- ── Footer ───────────────────────────────────────────────────────────── -->
+  <footer style="padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-dim);">
+    <div>CONNECTED TO <span class="text-cyan">US-EAST-GALAXY</span></div>
+    <div>QUERYQUEST v1.0.4-BETA &copy; 2026</div>
+  </footer>
+</div>
