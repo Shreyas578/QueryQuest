@@ -75,24 +75,19 @@ const GameService = {
     const player = gs.players.find(p => p.id === userId);
     if (player) {
       player.score += score;
-      player.answers.push({ questionIndex: gs.currentIndex, correct, score });
-    }
-
-    // Emit result back to that socket
-    const socketId = gs._socketMap?.[userId];
-    if (socketId) {
-      gs.io.to(socketId).emit(EVENTS.ANSWER_RESULT, {
+      // Store full result details to reveal later
+      player.lastResult = {
         correct,
         score,
         error,
         resultRows,
         correctAnswer: q.type === QUESTION_TYPE.MCQ ? q.correct_option : q.answer_sql,
         explanation: q.explanation,
-      });
+      };
+      player.answers.push({ questionIndex: gs.currentIndex, ...player.lastResult });
     }
 
-    // Broadcast live scoreboard
-    gs.io.to(gs.room.code).emit(EVENTS.SCORES_UPDATE, _scoreboard(gs));
+    // ── Scoreboard broadcast removed from here to prevent early revelation ──
 
     // If everyone answered, advance early
     if (gs.answeredSet.size >= gs.players.length) {
@@ -161,13 +156,33 @@ function _endQuestion(gs) {
   clearTimeout(gs.currentTimer);
   const q = gs.questions[gs.currentIndex];
 
-  // Reveal answer to all
+  // 1. Send personalized results to each player who answered
+  gs.players.forEach(p => {
+    const socketId = gs._socketMap?.[p.id];
+    if (socketId) {
+      // If they didn't answer, they get a "wrong" result or just the revealed state
+      const result = p.lastResult || {
+        correct: false,
+        score: 0,
+        correctAnswer: q.type === QUESTION_TYPE.MCQ ? q.correct_option : q.answer_sql,
+        explanation: q.explanation,
+      };
+      gs.io.to(socketId).emit(EVENTS.ANSWER_RESULT, { ...result, revealed: false });
+    }
+    // Clear lastResult for next question
+    delete p.lastResult;
+  });
+
+  // 2. Reveal answer to all (switches phase to result)
   gs.io.to(gs.room.code).emit(EVENTS.ANSWER_RESULT, {
     revealed: true,
     correctAnswer: q.type === QUESTION_TYPE.MCQ ? q.correct_option : q.answer_sql,
     explanation: q.explanation,
     scores: _scoreboard(gs),
   });
+
+  // 3. Broadcast final scoreboard for the round
+  gs.io.to(gs.room.code).emit(EVENTS.SCORES_UPDATE, _scoreboard(gs));
 
   gs.resultsTimer = setTimeout(() => _nextQuestion(gs), RESULTS_DISPLAY_TIME * 1000);
 }

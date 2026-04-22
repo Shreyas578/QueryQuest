@@ -48,6 +48,7 @@ export class App implements OnInit, OnDestroy {
   sqlAnswer = '';
   isMatchmaking = signal(false);
   isReady = signal(false);
+  isAnalyzing = signal(false);
   
   roomConfig = {
     difficulty: 'mixed' as 'easy' | 'medium' | 'hard' | 'mixed',
@@ -130,12 +131,18 @@ export class App implements OnInit, OnDestroy {
     });
 
     this.socket.on('answer_result').subscribe((res: AnswerResult) => {
-      this.gameState.update(s => ({ 
-        ...s, 
-        phase: res.revealed ? 'result' : s.phase, 
-        answerResult: res,
-        scores: res.scores || s.scores
-      }));
+      if (res.revealed) {
+        this.isAnalyzing.set(false);
+        this.gameState.update(s => ({ 
+          ...s, 
+          phase: 'result', 
+          answerResult: res,
+          scores: res.scores || s.scores
+        }));
+      } else {
+        // Private result received, update state but don't switch phase yet
+        this.gameState.update(s => ({ ...s, answerResult: res }));
+      }
     });
 
     this.socket.on('scores_update').subscribe((scores: PlayerScore[]) => {
@@ -213,9 +220,13 @@ export class App implements OnInit, OnDestroy {
   }
 
   submitAnswer(answer: string): void {
-    if (this.gameState().answered) return;
+    if (this.gameState().answered || this.isAnalyzing()) return;
+    this.isAnalyzing.set(true);
     this.socket.emit('submit_answer', { answer });
     this.gameState.update(s => ({ ...s, answered: true }));
+    // We don't wait for answer_result anymore to stop analysis
+    // because results are delayed.
+    setTimeout(() => this.isAnalyzing.set(false), 500); 
   }
 
   toggleReady(): void {

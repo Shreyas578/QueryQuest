@@ -1052,5 +1052,37 @@
     "correct_option": "BCNF (Boyce-Codd)",
     "explanation": "A table is in BCNF if for every one of its non-trivial functional dependencies X -> Y, X is a superkey. It addresses edge cases that 3NF might miss.",
     "setup_sql": null, "answer_sql": null
+  },
+  {
+    "id": 102, "type": "mcq", "difficulty": "easy",
+    "topic": "SQL Aliases",
+    "scenario": "You are organizing a shopping list. You want to rename the result column `SUM(quantity)` to something more descriptive like 'total quantity'.",
+    "question": "Which SQL keyword is used to create a temporary name (alias) for a column or table?",
+    "options": ["AS", "RENAME", "ALIAS", "SET"],
+    "correct_option": "AS",
+    "explanation": "The `AS` keyword is used to rename a column or table with an alias. This makes the output more readable. Example: `SELECT SUM(quantity) AS 'total quantity'`.",
+    "setup_sql": null, "answer_sql": null
+  },
+  {
+    "id": 103, "type": "sql", "difficulty": "medium",
+    "topic": "GROUP BY + SUM",
+    "scenario": "You have a list of ingredients needed for multiple recipes in the `ingredients` table.",
+    "question": "Calculate the total quantity needed for each ingredient. Select `name` and the sum of `quantity` aliased as 'total_q'. Group by `name`.",
+    "schema_display": "ingredients(name VARCHAR, quantity INT)",
+    "setup_sql": "CREATE TABLE ingredients (name VARCHAR(50), quantity INT); INSERT INTO ingredients VALUES ('Salt', 5), ('Sugar', 10), ('Salt', 2), ('Pepper', 3), ('Sugar', 5);",
+    "answer_sql": "SELECT name, SUM(quantity) AS total_q FROM ingredients GROUP BY name",
+    "explanation": "The `GROUP BY` clause groups rows with the same name, and `SUM(quantity)` adds up the quantities for each group.",
+    "correct_option": null, "options": null
+  },
+  {
+    "id": 104, "type": "sql", "difficulty": "medium",
+    "topic": "GROUP BY + Aggregate Mix",
+    "scenario": "You want a comprehensive shopping report. For each ingredient, you need to know how many times it appears in recipes and the total quantity required.",
+    "question": "Select `name`, the count of occurrences (alias 'needed_in_recipes'), and the sum of `quantity` (alias 'total_quantity') from the `ingredients` table. Group by `name` and order by the count in descending order.",
+    "schema_display": "ingredients(name VARCHAR, quantity INT)",
+    "setup_sql": "CREATE TABLE ingredients (name VARCHAR(50), quantity INT); INSERT INTO ingredients VALUES ('Salt', 1), ('Sugar', 1), ('Salt', 1), ('Pepper', 1), ('Sugar', 1), ('Salt', 1);",
+    "answer_sql": "SELECT name, COUNT(*) as 'needed_in_recipes', SUM(quantity) as 'total_quantity' from ingredients GROUP BY name ORDER BY COUNT(*) DESC",
+    "explanation": "This query aggregates both the frequency (COUNT) and the total volume (SUM) per ingredient, providing a clear shopping summary.",
+    "correct_option": null, "options": null
   }
 ]

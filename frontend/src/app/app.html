@@ -321,11 +321,11 @@
             @if (gameState().question?.type === 'mcq') {
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; flex: 1;">
                 @for (opt of gameState().question?.options; track opt) {
-                  <button class="btn btn-outline" 
+                  <button class="btn btn-outline option-btn" 
                           [disabled]="gameState().answered"
-                          [style.border-color]="gameState().answered && opt === gameState().answerResult?.correctAnswer ? 'var(--accent)' : ''"
-                          [style.background]="gameState().answered && opt === gameState().answerResult?.correctAnswer ? 'rgba(57, 255, 20, 0.1)' : ''"
-                          (click)="selectMCQ(opt)" 
+                          [class.correct]="gameState().answered && opt === gameState().answerResult?.correctAnswer"
+                          [class.incorrect]="gameState().answered && gameState().answerResult && opt !== gameState().answerResult?.correctAnswer && opt === sqlAnswer"
+                          (click)="sqlAnswer = opt; selectMCQ(opt)" 
                           style="justify-content: flex-start; text-align: left; padding: 1rem; font-size: 1rem; text-transform: none;">
                     <span style="color: var(--primary); font-family: var(--font-mono); font-weight: 800; margin-right: 0.75rem;">{{ $index + 1 }}</span>
                     {{ opt }}
@@ -339,8 +339,15 @@
                         class="text-mono"
                         style="flex: 1; width: 100%; background: #1a1a1e; border: 1px solid var(--glass-border); border-radius: 8px; padding: 1.5rem; color: #fff; font-size: 1.1rem; resize: none; outline: none;"></textarea>
               <div style="display: flex; justify-content: flex-end;">
-                <button class="btn btn-primary" (click)="submitAnswer(sqlAnswer)" [disabled]="gameState().answered || !sqlAnswer.trim()">
-                  SUBMIT QUERY
+                <button class="btn btn-primary" (click)="submitAnswer(sqlAnswer)" [disabled]="gameState().answered || !sqlAnswer.trim() || isAnalyzing()" style="min-width: 160px;">
+                  @if (isAnalyzing()) {
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="spinner"></div>
+                      ANALYZING...
+                    </div>
+                  } @else {
+                    SUBMIT QUERY
+                  }
                 </button>
               </div>
             }
@@ -371,43 +378,51 @@
         </aside>
 
         <!-- Result Overlay -->
-        @if (gameState().phase === 'result' || (gameState().answered && gameState().answerResult)) {
-          <div class="glass animate-fade" style="position: absolute; bottom: 3rem; left: 2rem; right: calc(300px + 3.5rem); background: rgba(10, 10, 12, 0.98); padding: 2rem; border-top: 6px solid; box-shadow: 0 -10px 40px rgba(0,0,0,0.5); z-index: 1000; max-height: 400px; overflow-y: auto;"
-               [style.border-color]="gameState().answerResult?.correct ? '#39FF14' : '#FF0055'">
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-              <h2 [style.color]="gameState().answerResult?.correct ? '#39FF14' : '#FF0055'" style="display: flex; align-items: center; gap: 0.75rem; margin: 0; font-size: 2rem; font-weight: 900;">
+        @if (gameState().phase === 'result') {
+          <div class="result-backdrop">
+            <div class="result-card" [class.success]="gameState().answerResult?.correct" [class.error]="!gameState().answerResult?.correct">
+              
+              <div class="result-icon" [class.success]="gameState().answerResult?.correct" [class.error]="!gameState().answerResult?.correct">
                 @if (gameState().answerResult?.correct) {
-                  DECODED SUCCESSFULLY! +{{ gameState().answerResult?.score }} PTS
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
                 } @else {
-                  ACCESS DENIED
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 }
-              </h2>
-              @if (gameState().phase === 'result') {
-                <span class="text-mono" style="font-size: 0.8rem; background: var(--glass-border); padding: 0.25rem 1rem; border-radius: 20px;">SYNCING NEXT WAVE...</span>
-              }
-            </div>
-
-            <p style="font-size: 1.1rem; line-height: 1.6; margin-bottom: 2rem; color: #fff; font-weight: 500;">
-              {{ gameState().answerResult?.explanation }}
-            </p>
-            
-            @if (!gameState().answerResult?.correct) {
-              <div style="background: rgba(255,0,85,0.08); border: 2px solid rgba(255,0,85,0.3); padding: 1.5rem; border-radius: 12px;">
-                 <div style="color: #FF0055; font-size: 0.8rem; font-weight: 800; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">
-                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                   AUTHORIZED SOLUTION
-                 </div>
-                 <div class="text-mono" style="font-size: 1.15rem; color: #39FF14; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 6px; border: 1px solid rgba(57, 255, 20, 0.1);">
-                   {{ gameState().answerResult?.correctAnswer }}
-                 </div>
               </div>
-            } @else {
-               <div style="background: rgba(57,255,20,0.08); border: 2px solid rgba(57,255,20,0.3); padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; gap: 1rem; color: #39FF14;">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
-                  <div style="font-weight: 700; font-size: 1.1rem;">Objective Completed. Score Multiplier Active.</div>
-               </div>
-            }
+
+              <div style="text-align: center; margin-bottom: 2rem;">
+                <h2 [style.color]="gameState().answerResult?.correct ? '#39FF14' : '#FF0055'" style="font-size: 2.5rem; font-weight: 900; margin-bottom: 0.5rem; letter-spacing: -1px;">
+                  {{ gameState().answerResult?.correct ? 'DECODED SUCCESSFULLY!' : 'ACCESS DENIED' }}
+                </h2>
+                @if (gameState().answerResult?.correct) {
+                  <div style="color: var(--primary); font-weight: 700; font-size: 1.2rem; letter-spacing: 2px;">+{{ gameState().answerResult?.score }} POINTS ACQUIRED</div>
+                }
+              </div>
+
+              <div class="glass" style="padding: 1.5rem; background: rgba(255,255,255,0.03); border-radius: 12px; margin-bottom: 2rem;">
+                <p style="font-size: 1.1rem; line-height: 1.6; color: var(--text-dim); margin-bottom: 0;">
+                  {{ gameState().answerResult?.explanation }}
+                </p>
+              </div>
+              
+              @if (!gameState().answerResult?.correct) {
+                <div style="margin-bottom: 2rem;">
+                  <div style="color: #FF0055; font-size: 0.75rem; font-weight: 800; margin-bottom: 0.75rem; letter-spacing: 1px; text-transform: uppercase;">AUTHORIZED SOLUTION:</div>
+                  <div class="text-mono" style="font-size: 1.1rem; color: #39FF14; background: rgba(0,0,0,0.3); padding: 1.25rem; border-radius: 8px; border: 1px solid rgba(57, 255, 20, 0.1);">
+                    {{ gameState().answerResult?.correctAnswer }}
+                  </div>
+                </div>
+              }
+
+              <div style="display: flex; justify-content: center;">
+                @if (gameState().phase === 'result') {
+                  <div class="text-mono pulse-primary" style="font-size: 0.85rem; color: var(--primary); letter-spacing: 2px;">INITIALIZING NEXT WAVE...</div>
+                } @else {
+                  <div class="text-mono" style="font-size: 0.85rem; color: var(--text-dim);">WAITING FOR OTHER OPERATIVES...</div>
+                }
+              </div>
+
+            </div>
           </div>
         }
       </div>

@@ -69,6 +69,17 @@ input:focus, textarea:focus {
   100% { bottom: 0%; }
 }
 
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+@keyframes result-pop {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 .animate-fade-in { animation: fadeInUp 0.5s ease-out forwards; }
 .animate-slide-in { animation: slideInRight 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
 .pulse-primary { animation: pulse 2s infinite; }
@@ -135,4 +146,89 @@ input:focus, textarea:focus {
   background: linear-gradient(transparent, rgba(0, 212, 255, 0.05), transparent);
   pointer-events: none;
   animation: scanline 4s linear infinite;
+}
+
+/* ── Result Feedback ────────────────────────────────────────────────────────── */
+
+.result-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+.result-card {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(15, 15, 20, 0.95);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  border-radius: 20px;
+  padding: 3rem;
+  position: relative;
+  overflow: hidden;
+  animation: result-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.result-card.error {
+  border-top: 6px solid #FF0055;
+  animation: shake 0.4s ease-in-out, result-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.result-card.success {
+  border-top: 6px solid #39FF14;
+  box-shadow: 0 0 40px rgba(57, 255, 20, 0.15);
+}
+
+.result-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 2rem;
+}
+
+.result-icon.success {
+  background: rgba(57, 255, 20, 0.1);
+  color: #39FF14;
+}
+
+.result-icon.error {
+  background: rgba(255, 0, 85, 0.1);
+  color: #FF0055;
+}
+
+.option-btn {
+  transition: all 0.2s ease;
+}
+
+.option-btn.correct {
+  border-color: #39FF14 !important;
+  background: rgba(57, 255, 20, 0.1) !important;
+  color: #39FF14 !important;
+}
+
+.option-btn.incorrect {
+  border-color: #FF0055 !important;
+  background: rgba(255, 0, 85, 0.1) !important;
+  opacity: 0.7;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
