@@ -311,9 +311,9 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 0.75rem; color: var(--text-dim); font-weight: 700;">YOUR SOLUTION</span>
               @if (gameState().answered) {
-                <span style="font-size: 0.75rem; color: var(--accent); font-weight: 700; text-transform: uppercase;">
-                  Submission Received 
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg>
+                <span style="font-size: 0.75rem; color: #39FF14; font-weight: 800; text-transform: uppercase; animation: pulse-green 1s infinite; display: flex; align-items: center; gap: 0.4rem;">
+                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg>
+                   SYSTEM LOCKED: SOLUTION SUBMITTED
                 </span>
               }
             </div>
@@ -323,21 +323,32 @@
                 @for (opt of gameState().question?.options; track opt) {
                   <button class="btn btn-outline option-btn" 
                           [disabled]="gameState().answered"
-                          [class.correct]="gameState().answered && opt === gameState().answerResult?.correctAnswer"
-                          [class.incorrect]="gameState().answered && gameState().answerResult && opt !== gameState().answerResult?.correctAnswer && opt === sqlAnswer"
+                          [class.selected]="sqlAnswer === opt && !gameState().answerResult?.revealed"
+                          [class.correct]="gameState().answerResult?.revealed && opt === gameState().answerResult?.correctAnswer"
+                          [class.incorrect]="gameState().answerResult?.revealed && opt !== gameState().answerResult?.correctAnswer && opt === sqlAnswer"
                           (click)="sqlAnswer = opt; selectMCQ(opt)" 
                           style="justify-content: flex-start; text-align: left; padding: 1rem; font-size: 1rem; text-transform: none;">
                     <span style="color: var(--primary); font-family: var(--font-mono); font-weight: 800; margin-right: 0.75rem;">{{ $index + 1 }}</span>
                     {{ opt }}
+                    <div style="margin-left: auto;">
+                      @if (gameState().answerResult?.revealed && opt === gameState().answerResult?.correctAnswer) {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#39FF14" stroke-width="4" class="animate-fade"><path d="M20 6L9 17l-5-5"/></svg>
+                      } @else if (gameState().answerResult?.revealed && opt === sqlAnswer && opt !== gameState().answerResult?.correctAnswer) {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF0055" stroke-width="4" class="animate-fade"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      }
+                    </div>
                   </button>
                 }
               </div>
             } @else {
               <textarea [(ngModel)]="sqlAnswer" 
                         [disabled]="gameState().answered"
+                        [class.locked]="gameState().answered && !gameState().answerResult?.revealed"
+                        [class.correct-border]="gameState().answerResult?.revealed && gameState().answerResult?.correct"
+                        [class.error-border]="gameState().answerResult?.revealed && !gameState().answerResult?.correct"
                         placeholder="SELECT * FROM table WHERE condition..."
                         class="text-mono"
-                        style="flex: 1; width: 100%; background: #1a1a1e; border: 1px solid var(--glass-border); border-radius: 8px; padding: 1.5rem; color: #fff; font-size: 1.1rem; resize: none; outline: none;"></textarea>
+                        style="flex: 1; width: 100%; background: #1a1a1e; border: 1px solid var(--glass-border); border-radius: 8px; padding: 1.5rem; color: #fff; font-size: 1.1rem; resize: none; outline: none; transition: all 0.3s ease;"></textarea>
               <div style="display: flex; justify-content: flex-end;">
                 <button class="btn btn-primary" (click)="submitAnswer(sqlAnswer)" [disabled]="gameState().answered || !sqlAnswer.trim() || isAnalyzing()" style="min-width: 160px;">
                   @if (isAnalyzing()) {
@@ -380,22 +391,24 @@
         <!-- Result Overlay -->
         @if (gameState().phase === 'result') {
           <div class="result-backdrop">
-            <div class="result-card" [class.success]="gameState().answerResult?.correct" [class.error]="!gameState().answerResult?.correct">
+            <div class="result-card" 
+                 [class.success-card]="gameState().answerResult?.correct === true" 
+                 [class.error-card]="gameState().answerResult?.correct === false">
               
-              <div class="result-icon" [class.success]="gameState().answerResult?.correct" [class.error]="!gameState().answerResult?.correct">
-                @if (gameState().answerResult?.correct) {
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
-                } @else {
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              <div class="result-icon" [class.success]="gameState().answerResult?.correct === true" [class.error]="gameState().answerResult?.correct === false">
+                @if (gameState().answerResult?.correct === true) {
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#39FF14" stroke-width="4" style="filter: drop-shadow(0 0 10px rgba(57, 255, 20, 0.5));"><path d="M20 6L9 17l-5-5"/></svg>
+                } @else if (gameState().answerResult?.correct === false) {
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#FF0055" stroke-width="4" style="filter: drop-shadow(0 0 10px rgba(255, 0, 85, 0.5));"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 }
               </div>
 
               <div style="text-align: center; margin-bottom: 2rem;">
-                <h2 [style.color]="gameState().answerResult?.correct ? '#39FF14' : '#FF0055'" style="font-size: 2.5rem; font-weight: 900; margin-bottom: 0.5rem; letter-spacing: -1px;">
-                  {{ gameState().answerResult?.correct ? 'DECODED SUCCESSFULLY!' : 'ACCESS DENIED' }}
-                </h2>
-                @if (gameState().answerResult?.correct) {
+                @if (gameState().answerResult?.correct === true) {
+                  <h2 style="font-size: 3rem; font-weight: 900; margin-bottom: 0.5rem; letter-spacing: -2px; text-transform: uppercase; color: #39FF14;">CORRECT SOLUTION</h2>
                   <div style="color: var(--primary); font-weight: 700; font-size: 1.2rem; letter-spacing: 2px;">+{{ gameState().answerResult?.score }} POINTS ACQUIRED</div>
+                } @else if (gameState().answerResult?.correct === false) {
+                  <div style="color: #FF0055; font-weight: 700; font-size: 1rem; letter-spacing: 2px; opacity: 0.8;">INCORRECT SOLUTION</div>
                 }
               </div>
 

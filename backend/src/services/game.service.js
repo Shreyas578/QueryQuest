@@ -62,7 +62,8 @@ const GameService = {
     let resultRows = [];
 
     if (q.type === QUESTION_TYPE.MCQ) {
-      correct = String(answer).trim().toLowerCase() === String(q.correct_option).trim().toLowerCase();
+      const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      correct = norm(answer) === norm(q.correct_option);
     } else {
       // SQL question — run in sandbox
       const res = await SandboxService.execute(answer, q);
@@ -72,7 +73,7 @@ const GameService = {
     }
 
     const score = correct ? BASE_SCORE + timeLeft * TIME_BONUS_FACTOR : 0;
-    const player = gs.players.find(p => p.id === userId);
+    const player = gs.players.find(p => p.id == userId);
     if (player) {
       player.score += score;
       // Store full result details to reveal later
@@ -169,17 +170,29 @@ function _endQuestion(gs) {
       };
       gs.io.to(socketId).emit(EVENTS.ANSWER_RESULT, { ...result, revealed: false });
     }
-    // Clear lastResult for next question
-    delete p.lastResult;
   });
 
-  // 2. Reveal answer to all (switches phase to result)
+  // 2. Reveal answer to all with global results map
+  const playerResults = {};
+  gs.players.forEach(p => {
+    playerResults[p.id] = p.lastResult || { 
+      correct: false, 
+      score: 0,
+      correctAnswer: q.type === QUESTION_TYPE.MCQ ? q.correct_option : q.answer_sql,
+      explanation: q.explanation
+    };
+  });
+
   gs.io.to(gs.room.code).emit(EVENTS.ANSWER_RESULT, {
     revealed: true,
     correctAnswer: q.type === QUESTION_TYPE.MCQ ? q.correct_option : q.answer_sql,
     explanation: q.explanation,
     scores: _scoreboard(gs),
+    playerResults
   });
+
+  // Clear lastResult for next question
+  gs.players.forEach(p => { delete p.lastResult; });
 
   // 3. Broadcast final scoreboard for the round
   gs.io.to(gs.room.code).emit(EVENTS.SCORES_UPDATE, _scoreboard(gs));

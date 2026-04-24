@@ -130,19 +130,34 @@ export class App implements OnInit, OnDestroy {
       this.gameState.update(s => ({ ...s, timeLeft: seconds }));
     });
 
-    this.socket.on('answer_result').subscribe((res: AnswerResult) => {
-      if (res.revealed) {
-        this.isAnalyzing.set(false);
-        this.gameState.update(s => ({ 
+    this.socket.on('answer_result').subscribe((res: any) => {
+      this.gameState.update(s => {
+        // Extract my personal result from the global map if it exists
+        const myId = this.auth.user?.id;
+        const myResult = res.playerResults && myId ? res.playerResults[myId] : null;
+
+        const nextResult = {
+          ...s.answerResult,
+          ...res,
+          ...myResult,
+          // Critically preserve 'correct' and 'revealed' flags regardless of message order
+          correct: myResult?.correct ?? res.correct ?? s.answerResult?.correct,
+          revealed: res.revealed || s.answerResult?.revealed || false
+        };
+        
+        let nextPhase = s.phase;
+        if (nextResult.revealed) {
+          nextPhase = 'result';
+          this.isAnalyzing.set(false);
+        }
+
+        return { 
           ...s, 
-          phase: 'result', 
-          answerResult: res,
+          phase: nextPhase, 
+          answerResult: nextResult,
           scores: res.scores || s.scores
-        }));
-      } else {
-        // Private result received, update state but don't switch phase yet
-        this.gameState.update(s => ({ ...s, answerResult: res }));
-      }
+        };
+      });
     });
 
     this.socket.on('scores_update').subscribe((scores: PlayerScore[]) => {

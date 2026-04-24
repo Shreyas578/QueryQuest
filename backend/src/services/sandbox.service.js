@@ -81,15 +81,26 @@ function _splitStatements(sql) {
 
 function _compareResults(a, b) {
   if (a.length !== b.length) return false;
+  
   const norm = (arr) =>
-    arr.map(row =>
-      Object.fromEntries(
-        Object.entries(row).map(([k, v]) => [k.toLowerCase(), String(v ?? '').toLowerCase()])
-      )
-    );
+    arr.map(row => {
+      // 1. Lowercase keys and values, then sort entries by key name
+      const entries = Object.entries(row).map(([k, v]) => [
+        k.toLowerCase(), 
+        String(v ?? '').toLowerCase().trim()
+      ]);
+      entries.sort((a, b) => a[0] < b[0] ? -1 : 1);
+      return Object.fromEntries(entries);
+    });
+
   const na = norm(a);
   const nb = norm(b);
-  return JSON.stringify(na.sort(_rowSort)) === JSON.stringify(nb.sort(_rowSort));
+
+  // 2. Sort the rows themselves to ignore row order (unless specified, but we assume set-level parity)
+  const sa = na.sort(_rowSort);
+  const sb = nb.sort(_rowSort);
+
+  return JSON.stringify(sa) === JSON.stringify(sb);
 }
 
 function _rowSort(a, b) {

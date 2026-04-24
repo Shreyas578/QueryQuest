@@ -44,6 +44,12 @@ input:focus, textarea:focus {
   100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
 }
 
+@keyframes pulse-green {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
 @keyframes pulse-red {
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 45, 120, 0.4); border-color: #ff2d78; }
   70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(255, 45, 120, 0); border-color: #ff2d78; }
@@ -175,14 +181,17 @@ input:focus, textarea:focus {
   animation: result-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-.result-card.error {
-  border-top: 6px solid #FF0055;
-  animation: shake 0.4s ease-in-out, result-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+.result-card.success-card {
+  border-top: 8px solid #39FF14;
+  box-shadow: 0 0 60px rgba(57, 255, 20, 0.2), inset 0 0 20px rgba(57, 255, 20, 0.05);
+  background: linear-gradient(to bottom, rgba(57, 255, 20, 0.1), transparent), rgba(15, 15, 20, 0.98);
 }
 
-.result-card.success {
-  border-top: 6px solid #39FF14;
-  box-shadow: 0 0 40px rgba(57, 255, 20, 0.15);
+.result-card.error-card {
+  border-top: 8px solid #FF0055;
+  box-shadow: 0 0 60px rgba(255, 0, 85, 0.15), inset 0 0 20px rgba(255, 0, 85, 0.05);
+  background: linear-gradient(to bottom, rgba(255, 0, 85, 0.05), transparent), rgba(15, 15, 20, 0.98);
+  animation: shake 0.4s ease-in-out;
 }
 
 .result-icon {
@@ -202,10 +211,25 @@ input:focus, textarea:focus {
 .result-icon.error {
   background: rgba(255, 0, 85, 0.1);
   color: #FF0055;
+  filter: drop-shadow(0 0 10px rgba(255, 0, 85, 0.3));
 }
 
 .option-btn {
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--glass-border);
+}
+
+.option-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: rgba(0, 242, 255, 0.05);
+  transform: translateY(-2px);
+}
+
+.option-btn.selected {
+  border-color: var(--primary) !important;
+  background: rgba(0, 242, 255, 0.15) !important;
+  box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+  color: #fff !important;
 }
 
 .option-btn.correct {
@@ -218,6 +242,36 @@ input:focus, textarea:focus {
   border-color: #FF0055 !important;
   background: rgba(255, 0, 85, 0.1) !important;
   opacity: 0.7;
+}
+
+.option-btn:disabled {
+  cursor: not-allowed;
+}
+
+/* Glass effect for locked text */
+.locked-visual {
+  background: rgba(57, 255, 20, 0.05);
+  border: 1px solid rgba(57, 255, 20, 0.2);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+textarea.locked {
+  border-color: var(--primary) !important;
+  background: rgba(0, 242, 255, 0.05) !important;
+  box-shadow: 0 0 15px rgba(0, 242, 255, 0.1);
+}
+
+textarea.correct-border {
+  border-color: #39FF14 !important;
+  background: rgba(57, 255, 20, 0.05) !important;
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.2);
+}
+
+textarea.error-border {
+  border-color: #FF0055 !important;
+  background: rgba(255, 0, 85, 0.05) !important;
+  box-shadow: 0 0 20px rgba(255, 0, 85, 0.1);
 }
 
 .spinner {
