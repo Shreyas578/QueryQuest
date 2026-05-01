@@ -7,7 +7,7 @@ services:
     region: singapore
     rootDir: backend
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: npm run db:init && npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV

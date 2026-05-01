@@ -1,12 +1,15 @@
 -- QueryQuest Database Schema (PostgreSQL)
 -- Run this file to initialize the database before starting the backend.
 
--- Drop types if they exist (for clean re-runs)
-DROP TYPE IF EXISTS room_status CASCADE;
-DROP TYPE IF EXISTS game_difficulty CASCADE;
-
-CREATE TYPE room_status AS ENUM ('waiting', 'in_progress', 'finished');
-CREATE TYPE game_difficulty AS ENUM ('easy', 'medium', 'hard', 'mixed');
+-- Drop types only if you want a complete reset. For auto-init, we use DO blocks.
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'room_status') THEN
+        CREATE TYPE room_status AS ENUM ('waiting', 'in_progress', 'finished');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'game_difficulty') THEN
+        CREATE TYPE game_difficulty AS ENUM ('easy', 'medium', 'hard', 'mixed');
+    END IF;
+END $$;
 
 -- ── Users ─────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS users (
