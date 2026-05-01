@@ -48,20 +48,35 @@ app.use((err, _req, res, _next) => {
 
 // ── DB + Socket bootstrap ──────────────────────────────────────────────────────
 (async () => {
-  try {
-    const conn = await db.getConnection();
-    console.log('✅ MySQL connected');
-    conn.release();
+  const MAX_RETRIES = 5;
+  let retries = 0;
+  let connected = false;
 
-    initSocketHandler(io);
-    console.log('✅ Socket.IO initialised');
+  while (retries < MAX_RETRIES && !connected) {
+    try {
+      console.log(`📡 Attempting to connect to MySQL (Attempt ${retries + 1}/${MAX_RETRIES}) at ${process.env.DB_HOST}:${process.env.DB_PORT}...`);
+      const conn = await db.getConnection();
+      console.log('✅ MySQL connected');
+      conn.release();
+      connected = true;
 
-    const PORT = process.env.PORT || 3000;
-    httpServer.listen(PORT, () => {
-      console.log(`🚀 QueryQuest backend running on http://localhost:${PORT}`);
-    });
-  } catch (err) {
-    console.error('❌ Failed to start server:', err.message);
-    process.exit(1);
+      initSocketHandler(io);
+      console.log('✅ Socket.IO initialised');
+
+      const PORT = process.env.PORT || 3000;
+      httpServer.listen(PORT, () => {
+        console.log(`🚀 QueryQuest backend running on port ${PORT}`);
+      });
+    } catch (err) {
+      retries++;
+      console.error(`❌ Connection failed (Attempt ${retries}/${MAX_RETRIES}):`, err.message);
+      if (retries < MAX_RETRIES) {
+        console.log('Waiting 5 seconds before retrying...');
+        await new Promise(res => setTimeout(res, 5000));
+      } else {
+        console.error('💥 All connection attempts failed. Exiting.');
+        process.exit(1);
+      }
+    }
   }
 })();
