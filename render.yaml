@@ -37,7 +37,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CLIENT_URL
-        value: https://queryquest.onrender.com # Update this after frontend is created
+        value: https://queryquest-frontend.onrender.com
 
   # ── Frontend Static Site ─────────────────────────────────────────────────────
   - type: web
