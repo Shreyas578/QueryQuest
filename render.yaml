@@ -1,0 +1,65 @@
+services:
+  # ── Backend Service ──────────────────────────────────────────────────────────
+  - type: web
+    name: queryquest-backend
+    env: node
+    plan: free # Can be changed to 'starter' or higher
+    region: singapore # Change to your preferred region
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DB_HOST
+        fromDatabase:
+          name: queryquest-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: queryquest-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: queryquest-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: queryquest-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: queryquest-db
+          property: database
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        value: https://queryquest.onrender.com # Update this after frontend is created
+
+  # ── Frontend Static Site ─────────────────────────────────────────────────────
+  - type: static
+    name: queryquest-frontend
+    env: static
+    region: singapore
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    publishPath: dist/frontend/browser
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+# ── Database ──────────────────────────────────────────────────────────────────
+databases:
+  - name: queryquest-db
+    databaseName: queryquest
+    user: queryquest_user
+    plan: free # Note: Render free tier expires after 30 days
+    region: singapore
