@@ -3,8 +3,8 @@ services:
   - type: web
     name: queryquest-backend
     runtime: node
-    plan: free # Can be changed to 'starter' or higher
-    region: singapore # Change to your preferred region
+    plan: free
+    region: singapore
     rootDir: backend
     buildCommand: npm install
     startCommand: npm start

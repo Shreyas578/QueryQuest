@@ -1,10 +1,10 @@
-const mysql = require('mysql2/promise');
+const { Client } = require('pg');
 
 /**
- * SandboxService — executes player SQL in an isolated, read-only MySQL connection.
+ * SandboxService — executes player SQL in an isolated, read-only PostgreSQL schema.
  *
- * Each answer gets its own ephemeral connection scoped to the question's
- * temporary schema so players cannot affect each other or the main DB.
+ * Each answer gets its own ephemeral schema scoped to the question's
+ * temporary data so players cannot affect each other or the main DB.
  */
 const SandboxService = {
   /**
@@ -15,25 +15,30 @@ const SandboxService = {
    * @returns {{ correct: boolean, result: any[], error: string|null }}
    */
   async execute(playerSql, question) {
-    const conn = await mysql.createConnection({
+    const client = new Client({
       host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT) || 3306,
-      user: process.env.DB_USER || 'root',
+      port: parseInt(process.env.DB_PORT) || 5432,
+      user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || '',
-      multipleStatements: false,
+      database: process.env.DB_NAME || 'queryquest',
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     });
 
-    const dbName = `qq_sandbox_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const schemaName = `qq_sandbox_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
     try {
-      // 1. Create isolated schema
-      await conn.query(`CREATE DATABASE \`${dbName}\``);
-      await conn.query(`USE \`${dbName}\``);
+      await client.connect();
+
+      // 1. Create isolated schema and set it as the current search path
+      await client.query(`CREATE SCHEMA "${schemaName}"`);
+      await client.query(`SET search_path TO "${schemaName}", public`);
 
       // 2. Run question setup DDL + seed data
       if (question.setup_sql) {
         for (const stmt of _splitStatements(question.setup_sql)) {
-          await conn.query(stmt);
+          // Replace MySQL specific syntax in setup if needed
+          const pgStmt = stmt.replace(/AUTO_INCREMENT/gi, 'SERIAL').replace(/`/g, '"');
+          await client.query(pgStmt);
         }
       }
 
@@ -43,22 +48,28 @@ const SandboxService = {
         return { correct: false, result: [], error: 'Only SELECT statements are allowed.' };
       }
 
-      const [rows] = await conn.query({ sql: safe, timeout: 3000 });
-      const playerResult = Array.isArray(rows) ? rows : [];
+      // Ensure player query uses double quotes instead of backticks
+      const pgPlayerSql = safe.replace(/`/g, '"');
+      
+      const res = await client.query(pgPlayerSql);
+      const playerResult = res.rows || [];
 
       // 4. Run expected answer to get canonical result
-      const [expectedRows] = await conn.query({ sql: question.answer_sql, timeout: 3000 });
+      const pgAnswerSql = question.answer_sql.replace(/`/g, '"');
+      const expectedRes = await client.query(pgAnswerSql);
+      const expectedRows = expectedRes.rows || [];
 
       const correct = _compareResults(playerResult, expectedRows);
       return { correct, result: playerResult.slice(0, 50), error: null };
     } catch (err) {
-      const message = err.sqlMessage || err.message || 'Query error';
+      const message = err.detail || err.message || 'Query error';
       return { correct: false, result: [], error: message };
     } finally {
       try {
-        await conn.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
+        // 5. Cleanup
+        await client.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
       } catch (_) {}
-      await conn.end();
+      await client.end();
     }
   },
 };
@@ -96,7 +107,6 @@ function _compareResults(a, b) {
   const na = norm(a);
   const nb = norm(b);
 
-  // 2. Sort the rows themselves to ignore row order (unless specified, but we assume set-level parity)
   const sa = na.sort(_rowSort);
   const sb = nb.sort(_rowSort);
 

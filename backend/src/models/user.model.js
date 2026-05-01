@@ -27,11 +27,11 @@ const UserModel = {
 
   async create({ username, email, password_hash }) {
     const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${username}`;
-    const [result] = await db.query(
-      'INSERT INTO users (username, email, password_hash, elo_rating, avatar_color, avatar_url) VALUES (?, ?, ?, 1000, ?, ?)',
+    const [rows] = await db.query(
+      'INSERT INTO users (username, email, password_hash, elo_rating, avatar_color, avatar_url) VALUES (?, ?, ?, 1000, ?, ?) RETURNING id',
       [username, email, password_hash, _randomColor(), avatarUrl]
     );
-    return result.insertId;
+    return rows[0].id;
   },
 
   async updateElo(userId, newElo) {
