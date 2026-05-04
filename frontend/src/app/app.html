@@ -130,11 +130,11 @@
         <div style="margin-top: 4rem; display: flex; gap: 4rem; justify-content: center;">
           <div class="glass" style="padding: 1.5rem 2.5rem; text-align: left;">
             <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.5rem;">Active Players</div>
-            <div style="font-size: 1.5rem; font-weight: 700;" class="text-cyan">1,248</div>
+            <div style="font-size: 1.5rem; font-weight: 700;" class="text-cyan">{{ activePlayers() }}</div>
           </div>
           <div class="glass" style="padding: 1.5rem 2.5rem; text-align: left;">
             <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.5rem;">Your Rank</div>
-            <div style="font-size: 1.5rem; font-weight: 700;" class="text-purple">Silver IV</div>
+            <div style="font-size: 1.5rem; font-weight: 700;" class="text-purple">{{ getPlayerRank(auth.user?.elo_rating) }}</div>
           </div>
         </div>
         

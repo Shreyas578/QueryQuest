@@ -26,6 +26,9 @@ const initSocketHandler = (io) => {
   io.on('connection', (socket) => {
     const { id: userId, username } = socket.user;
     console.log(`[Socket] ${username} connected (${socket.id})`);
+    
+    // Broadcast active players count
+    io.emit('active_players', io.engine.clientsCount);
 
     // ── JOIN ROOM ────────────────────────────────────────────────────────────
     socket.on(EVENTS.JOIN_ROOM, async ({ code }) => {
@@ -118,6 +121,7 @@ const initSocketHandler = (io) => {
     // ── DISCONNECT ───────────────────────────────────────────────────────────
     socket.on('disconnect', async () => {
       console.log(`[Socket] ${username} disconnected`);
+      io.emit('active_players', io.engine.clientsCount);
       MatchmakingService.dequeue(userId);
       await _leaveRoom(socket, io, userId);
     });

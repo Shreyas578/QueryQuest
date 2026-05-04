@@ -49,6 +49,7 @@ export class App implements OnInit, OnDestroy {
   isMatchmaking = signal(false);
   isReady = signal(false);
   isAnalyzing = signal(false);
+  activePlayers = signal<number>(0);
   
   roomConfig = {
     difficulty: 'mixed' as 'easy' | 'medium' | 'hard' | 'mixed',
@@ -194,6 +195,10 @@ export class App implements OnInit, OnDestroy {
     });
     
     this.socket.on('error').subscribe(({ message }) => alert(message));
+
+    this.socket.on('active_players').subscribe((count: number) => {
+      this.activePlayers.set(count);
+    });
   }
 
   private updateIsReady(players: PlayerScore[]): void {
@@ -256,5 +261,21 @@ export class App implements OnInit, OnDestroy {
 
   selectMCQ(option: string): void {
     this.submitAnswer(option);
+  }
+
+  getPlayerRank(elo: number | undefined | null): string {
+    if (!elo && elo !== 0) return 'Unranked';
+    if (elo < 900) return 'Bronze V';
+    if (elo < 1000) return 'Bronze IV';
+    if (elo < 1100) return 'Bronze III';
+    if (elo < 1200) return 'Bronze II';
+    if (elo < 1300) return 'Bronze I';
+    if (elo < 1500) return 'Silver';
+    if (elo < 1700) return 'Gold';
+    if (elo < 1900) return 'Platinum';
+    if (elo < 2100) return 'Diamond';
+    if (elo < 2300) return 'Elite';
+    if (elo < 2500) return 'Master';
+    return 'Conquerer';
   }
 }
