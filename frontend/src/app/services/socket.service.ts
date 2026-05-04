@@ -12,7 +12,12 @@ export class SocketService implements OnDestroy {
   constructor(private auth: AuthService) {}
 
   connect(): void {
-    if (this.socket?.connected) return;
+    if (this.socket) {
+      if (this.socket.disconnected) {
+        this.socket.connect();
+      }
+      return;
+    }
     this.socket = io(environment.socketUrl, {
       auth: { token: this.auth.token },
       transports: ['websocket'],

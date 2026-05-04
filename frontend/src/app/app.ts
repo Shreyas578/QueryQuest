@@ -14,6 +14,7 @@ import { GameState, Question, PlayerScore, AnswerResult, GameOverResult } from '
   standalone: false
 })
 export class App implements OnInit, OnDestroy {
+  private socketInitialized = false;
   // ── State ──────────────────────────────────────────────────────────────────
   gameState = signal<GameState>({
     question: null,
@@ -66,7 +67,6 @@ export class App implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     if (this.auth.isLoggedIn) {
-      this.initSocket();
       this.refreshRooms();
     }
     
@@ -78,8 +78,16 @@ export class App implements OnInit, OnDestroy {
     }, 5000);
     
     this.auth.user$.pipe(takeUntil(this.destroy$)).subscribe(user => {
-      if (user) this.initSocket();
-      else this.socket.disconnect();
+      if (user) {
+        if (!this.socketInitialized) {
+          this.initSocket();
+          this.socketInitialized = true;
+        }
+      }
+      else {
+        this.socket.disconnect();
+        this.socketInitialized = false;
+      }
     });
   }
 
