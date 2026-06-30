@@ -3,12 +3,12 @@ const { ROOM_STATUS } = require('../config/constants');
 
 const RoomModel = {
   async create({ code, host_id, max_players, difficulty, num_questions }) {
-    const [rows] = await db.query(
+    const [result] = await db.query(
       `INSERT INTO rooms (code, host_id, status, max_players, difficulty, num_questions)
-       VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [code, host_id, ROOM_STATUS.WAITING, max_players, difficulty, num_questions]
     );
-    return rows[0].id;
+    return result.insertId;
   },
 
   async findByCode(code) {
@@ -52,7 +52,7 @@ const RoomModel = {
 
   async addPlayer(roomId, userId) {
     await db.query(
-      'INSERT INTO room_players (room_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING',
+      'INSERT IGNORE INTO room_players (room_id, user_id) VALUES (?, ?)',
       [roomId, userId]
     );
   },
@@ -88,7 +88,7 @@ const RoomModel = {
   async areAllPlayersReady(roomId) {
     const [rows] = await db.query(
       `SELECT COUNT(*) AS total, 
-              COUNT(*) FILTER (WHERE is_ready = TRUE) AS ready_count 
+              SUM(IF(is_ready = TRUE, 1, 0)) AS ready_count 
        FROM room_players WHERE room_id = ?`,
       [roomId]
     );
